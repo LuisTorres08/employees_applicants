@@ -1,26 +1,43 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateWorkRecordDto } from './dto/create-work-record.dto';
 import { UpdateWorkRecordDto } from './dto/update-work-record.dto';
+import { WorkRecord } from './entities/work-record.entity';
 
 @Injectable()
-export class WorkRecordsService {
-  create(createWorkRecordDto: CreateWorkRecordDto) {
-    return 'This action adds a new workRecord';
+export class WorkRecordService {
+  constructor(
+    @InjectRepository(WorkRecord) private workRecordRepository: Repository<WorkRecord>,
+  ) {}
+
+  create(createWorkRecordDto: CreateWorkRecordDto): Promise<WorkRecord> {
+    const workRecord = this.workRecordRepository.create(createWorkRecordDto);
+    return this.workRecordRepository.save(workRecord);
   }
 
-  findAll() {
-    return `This action returns all workRecords`;
+  findAll(): Promise<WorkRecord[]> {
+    return this.workRecordRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} workRecord`;
+  findOne(id: number): Promise<WorkRecord> {
+    return this.workRecordRepository.findOne(id);
   }
 
-  update(id: number, updateWorkRecordDto: UpdateWorkRecordDto) {
-    return `This action updates a #${id} workRecord`;
-  }
+  async update(id: number, updateWorkRecordDto: UpdateWorkRecordDto): Promise<WorkRecord> {
+   const workRecord = await this.workRecordRepository.preload({
+     id: id,
+     ...updateWorkRecordDto,
+   });
+   if (!workRecord) {
+     throw new NotFoundException(`Work Record ${id} not found`);
+   }
+   return this.workRecordRepository.save(workRecord);
+ }
+  
 
-  remove(id: number) {
-    return `This action removes a #${id} workRecord`;
-  }
+ async remove(id: number) {
+  const workRecord = await this.findOne(id);
+  return this.workRecordRepository.remove(workRecord);
+}
 }
